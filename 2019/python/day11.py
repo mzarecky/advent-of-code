@@ -1,11 +1,52 @@
 
-import itertools
 import collections
 
 
+class HullPainterRobot:
+    def __init__(self):
+        """
+        0: Black, Left 90*
+        1: White, Right 90*
+        """
+        self.panel_colors = collections.defaultdict(int)
+        self.painted_panels = collections.defaultdict(int)
+        self.pos = (0, 0)
+        self.dir = (0, 1)
+        self.valid_colors = [0, 1]
+        self.rotate = {
+            0: {(0, 1): (-1, 0),
+                (1, 0): (0, 1),
+                (0, -1): (1, 0),
+                (-1, 0): (0, -1)},
+            1: {(0, 1): (1, 0),
+                (1, 0): (0, -1),
+                (0, -1): (-1, 0),
+                (-1, 0): (0, 1)}
+        }
+
+    def move(self, input_code):
+        """
+        The robot turns and then moves forward one panel
+        """
+        if input_code not in self.rotate:
+            print(f"Unknown input value: {input_code}")
+            raise ValueError
+        self.dir = self.rotate[input_code][self.dir]
+        self.pos = (self.pos[0]+self.dir[0], self.pos[1]+self.dir[1])
+
+    def paint(self, input_code):
+        if input_code not in self.valid_colors:
+            print(f"Unknown input value: {input_code}")
+            raise ValueError
+        self.panel_colors[self.pos] = input_code
+        self.painted_panels[self.pos] += 1
+
+    def get_color(self):
+        return self.panel_colors[self.pos]
+
+
 class IntegerComputer:
-    def __init__(self, program, input_queue=[], feedback_mode=False, verbose=False):
-        # self.program = program[:]
+    def __init__(self, program, input_queue: HullPainterRobot, verbose=False):
         self.program = collections.defaultdict(int, {x: program[x] for x in range(len(program))})
         self.current_pos = 0
         self.relative_pos = 0
@@ -15,7 +56,7 @@ class IntegerComputer:
         self.op_mode_3 = 0
         self.is_done = False
         self.verbose = verbose
-        self.feedback_mode = feedback_mode
+        self.output_mode = 0
         self.output_code = 0
         self.input_queue = input_queue
 
@@ -31,8 +72,8 @@ class IntegerComputer:
             9: self.__rel_base
         }
 
-    def add_input(self, input_value):
-        self.input_queue.append(input_value)
+    def _update_output_mode(self):
+        self.output_mode = (self.output_mode + 1) % 2
 
     def _decode_op_code(self, pos):
         op_code = self.program[pos]
@@ -90,17 +131,26 @@ class IntegerComputer:
         self.current_pos += 4
 
     def __in(self):
+        """
+        This instruction should access the robot's current state
+        """
         dest = self._get_input_position(self.current_pos + 1, self.op_mode_1)
-        self.program[dest] = self.input_queue.pop(0)
+        self.program[dest] = self.input_queue.get_color()
         self.current_pos += 2
 
     def __out(self):
+        """
+        Program outputs two values, first one goes to painter, second goes to movement
+        """
         self.output_code = self._get_parameter(self.current_pos + 1, self.op_mode_1)
-        self.current_pos += 2
         if self.verbose:
             print(f"output code = {self.output_code}")
-        if self.feedback_mode:
-            return self.output_code
+        self.current_pos += 2
+        if self.output_mode == 0:
+            self.input_queue.paint(self.output_code)
+        else:
+            self.input_queue.move(self.output_code)
+        self._update_output_mode()
 
     def __jnz(self):
         op1 = self._get_parameter(self.current_pos + 1, self.op_mode_1)
@@ -160,29 +210,47 @@ def get_program_from_input(ins: str):
     return list(map(int, ins.split(",")))
 
 
-# Tests ----
-my_program = get_program_from_input("109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99")
-aa = IntegerComputer(my_program, [])
-aa.run()
-
-my_program = get_program_from_input("1102,34915192,34915192,7,4,7,99,0")
-aa = IntegerComputer(my_program, [])
-aa.run()
-
-my_program = get_program_from_input("104,1125899906842624,99")
-aa = IntegerComputer(my_program, [])
-aa.run()
-
-
 # Part 1 ----
-infile = "../data/data9.txt"
+infile = "../data/data11.txt"
 my_program = get_program(infile)
-aa = IntegerComputer(my_program, [1])
+hpc = HullPainterRobot()
+aa = IntegerComputer(my_program, hpc, verbose=True)
 aa.run()
+print(len(hpc.painted_panels))
 
 
 # Part 2 ----
-infile = "../data/data9.txt"
+infile = "../data/data11.txt"
 my_program = get_program(infile)
-aa = IntegerComputer(my_program, [2])
+hpc = HullPainterRobot()
+hpc.panel_colors[hpc.pos] = 1  # Set starting tile to white
+aa = IntegerComputer(my_program, hpc, verbose=True)
 aa.run()
+
+# Copy this to test out writing a draw function
+bb = hpc.panel_colors.copy()
+
+
+def print_hull_painting(pc: collections.defaultdict):
+    min_x, min_y, max_x, max_y = 0, 0, 0, 0
+    for j in pc.keys():
+        min_x, min_y, max_x, max_y = min(min_x, j[0]), min(min_y, j[1]), max(max_x, j[0]), max(max_y, j[1])
+    x_range, y_range = max_x - min_x + 1, max_y - min_y + 1
+    x_shift, y_shift = -1 * min_x, -1 * min_y
+    print(f"x: [{min_x}, {max_x}]; y: [{min_y}, {max_y}]")
+    print(f"x_range: {x_range}; y_range: {y_range}")
+    print(f"x_shift: {x_shift}; y_shift: {y_shift}")
+    color_map = {0: " ", 1: "*"}
+    data = [[color_map[0] for x in range(x_range)] for y in range(y_range)]
+
+    # Put colors in data
+    for j in pc.keys():
+        data[y_shift + j[1]][x_shift + j[0]] = color_map[pc[j]]
+
+    print("----- Image -----")
+    for j in reversed(range(y_range)):
+        print("".join(data[j]))
+    print("----- End Image -----")
+
+
+print_hull_painting(bb)
