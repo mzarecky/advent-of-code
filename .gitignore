@@ -1,9 +1,11 @@
 
-2018/
-2015/
 **/data
 **/.idea/
 **/.Rproj.user/
 **/tests
 **/__pycache__
+
+# input files
+input.txt
+test*.txt
 
