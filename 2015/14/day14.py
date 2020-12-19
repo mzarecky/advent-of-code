@@ -37,10 +37,18 @@ def seat_people(input_data):
 
 
 def seat_people2(input_data):
-    people = set('Yourself')
-    for p, q in input_data.keys():
+    cp = input_data.copy()
+    people = set()
+    for p, q in cp.keys():
         people.add(p)
         people.add(q)
+
+    # Add yourself
+    for p in people:
+        cp[(p, "M")] = 0
+        cp[("M", p)] = 0
+
+    people.add("M")
     n = len(people)
     output = dict()
     for p in itertools.permutations(people, n):
@@ -52,8 +60,8 @@ def seat_people2(input_data):
         seating_order.append((p[-1], p[-2]))
         score = 0
         for k in seating_order:
-            if k in input_data:
-                score += input_data[k]
+            if k in cp:
+                score += cp[k]
         # score = sum(map(lambda x: input_data[x], seating_order))
         output[p] = score
     return output

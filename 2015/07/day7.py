@@ -1,16 +1,38 @@
 
 import collections
 import re
+import functools
 
 
-with open("./2015/07/test1.txt") as f:
-    data = [x.strip() for x in f.readlines()]
+def read_input(input_string):
+    reg_set = r"^(\w+) -> (\w+)$"
+    reg_not = r"^(NOT) (\w+) -> (\w+)$"
+    reg_gate = r"^(\w+) (AND|OR|LSHIFT|RSHIFT) (\w+) -> (\w+)$"
+    if m := re.match(reg_set, input_string):
+        temp = m.groups()
+        r = set(list(filter(lambda x: x.isalpha(), [temp[0]])))
+        return {"target": temp[-1], "command": "SET", "in1": temp[0], "in2": None, "requires": r}
+    elif m := re.match(reg_not, input_string):
+        temp = m.groups()
+        r = set(list(filter(lambda x: x.isalpha(), [temp[1]])))
+        return {"target": temp[-1], "command": temp[0], "in1": temp[1], "in2": None, "requires": r}
+    elif m := re.match(reg_gate, input_string):
+        temp = m.groups()
+        r = set(list(filter(lambda x: x.isalpha(), [temp[0], temp[2]])))
+        return {"target": temp[-1], "command": temp[1], "in1": temp[0], "in2": temp[2], "requires": r}
+    return None
 
+
+with open("./2015/07/input.txt") as f:
+    data = [read_input(x.strip()) for x in f.readlines()]
 
 
 class CircuitBoard:
-    def __init__(self):
-        self.wires = collections.defaultdict(None)
+    def __init__(self, connections):
+        self.connections = connections.copy()
+        self.wires = set()
+        self.set_wires()
+        self.wire_values = collections.defaultdict(None)
 
     def _set(self, in1, value):
         self.wires[in1] = value
@@ -32,3 +54,16 @@ class CircuitBoard:
 
     def _to16(self, value):
         return value & 65535
+
+    def set_wires(self):
+        targets = set(map(lambda x: x["target"], self.connections))
+        reqs = functools.reduce(lambda x, y: x | y, map(lambda z: z["requires"], self.connections))
+        self.wires = reqs | targets
+
+    def set_wire_values(self):
+        pass
+
+
+aa = CircuitBoard(data)
+
+
