@@ -1,43 +1,83 @@
 
 import functools
 
-with open("./2020/3/input.txt") as f:
+
+def parse_string(x):
+    x = x.strip()
+    temp = x.split(" ")
+    temp = map(lambda y: y.split(":"), temp)
+    return {a: b for a, b in temp}
+
+
+with open("./2020/4/input.txt") as f:
     data = f.readlines()
     data = [d.strip() for d in data]
-    nrows = len(data)
-    ncols = len(data[0])
+    s = ""
+    output = []
+    for d in data:
+        if d != "":
+            s += " " + d
+        else:
+            print(s)
+            output += [parse_string(s)]
+            s = ""
+    print(s)
+    output += [parse_string(s)]
 
 
-def coordinate_generator(size_x, size_y, start_x, start_y, slope_x, slope_y):
-    current_x = start_x
-    current_y = start_y
-    while current_y < size_y:
-        if current_y > 0:
-            yield (current_y, current_x)
-        current_y += slope_y
-        current_x = (current_x + slope_x) % size_x
-    #raise StopIteration
+def is_valid(d):
+    req_set = {"byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"}
+    in_set = set(d.keys())
+    req_set.issubset(in_set)
+    return req_set.issubset(in_set)  # req_set == req_set & in_set
 
 
-# Part 1
-nrows = len(data)
-ncols = len(data[0])
-gen = coordinate_generator(ncols, nrows, 0, 0, 3, 1)
-num_trees = sum(map(lambda x: 1 if data[x[0]][x[1]] == "#" else 0, gen))
-print(f"Hit {num_trees} trees")
+def is_byr(x):
+    return '1920' <= x <= '2002'
 
 
-# Part 2
-def part2(input_data, slope_x, slope_y):
-    nrows = len(input_data)
-    ncols = len(input_data[0])
-    gen = coordinate_generator(ncols, nrows, 0, 0, slope_x, slope_y)
-    num_trees = sum(map(lambda x: 1 if input_data[x[0]][x[1]] == "#" else 0, gen))
-    print(f"Hit {num_trees} trees")
-    return num_trees
+def is_iyr(x):
+    return '2010' <= x <= '2020'
 
 
-my_slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)]
-all_trees = list(map(lambda x: part2(data, x[0], x[1]), my_slopes))
-prod_trees = functools.reduce(lambda x, y: x * y, all_trees, 1)
-print(f"Product of trees is {prod_trees}")
+def is_eyr(x):
+    return '2020' <= x <= '2030'
+
+
+def is_hgt(x):
+    if x.endswith("cm"):
+        return 150 <= int(x[0:-2]) <= 193
+    elif x.endswith("in"):
+        return 59 <= int(x[0:-2]) <= 76
+    else:
+        return False
+
+
+def is_hcl(x):
+    if x.startswith("#") and len(x) == 7:
+        for c in x[1:]:
+            if c not in '0123456789abcdef':
+                return False
+        return True
+    else:
+        return False
+
+
+def is_ecl(x):
+    return x in ['amb', 'blu', 'brn', 'gry', 'grn', 'hzl', 'oth']
+
+
+def is_pid(x):
+    return len(x) == 9 and set(x).issubset(set('0123456789'))
+
+
+def is_valid2(x):
+    if is_valid(x):
+        return is_byr(x['byr']) and is_iyr(x['iyr']) and is_eyr(x['eyr']) and is_hgt(x['hgt']) and is_hcl(x['hcl']) \
+               and is_ecl(x['ecl']) and is_pid(x['pid'])
+    else:
+        return False
+
+
+print(sum(map(is_valid, output)))
+print(sum(map(is_valid2, output)))

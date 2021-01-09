@@ -1,46 +1,92 @@
 
-import itertools
+def parse_input(x):
+    temp = x.split(" ")
+    return temp[0], int(temp[1])
 
-with open("./2020/9/input.txt") as f:
+
+with open("./2020/8/input.txt") as f:
     data = f.readlines()
-    data = [int(d.strip()) for d in data]
+    instruction_list = [parse_input(d.strip()) for d in data]
+    visited_list = [False for d in data]
 
 
-def is_sum_of(int_list, target):
-    temp = list(
-        filter(lambda x: x == target, map(sum, filter(lambda y: y[0] != y[1], itertools.combinations(int_list, 2))))
-    )
-    return True if len(temp) > 0 else False
+class HGC(object):
+    def __init__(self, instructions):
+        self.accumulator = 0
+        self.instructions = instructions
+        self.times_visited = [0 for x in instructions]
+        self.pos = 0
+
+    def _nop(self, value):
+        self.times_visited[self.pos] += 1
+        self.pos += 1
+
+    def _acc(self, value):
+        self.times_visited[self.pos] += 1
+        self.accumulator += value
+        self.pos += 1
+
+    def _jmp(self, value):
+        self.times_visited[self.pos] += 1
+        self.pos += value
+
+    def boot(self):
+        while self.times_visited[self.pos] == 0:
+            command, value = self.instructions[self.pos]
+            if command == "nop":
+                self._nop(value)
+                yield self.accumulator
+            elif command == "jmp":
+                self._jmp(value)
+                yield self.accumulator
+            elif command == "acc":
+                self._acc(value)
+                yield self.accumulator
+            else:
+                raise StopIteration
+
+    def run(self):
+        while 0 <= self.pos < len(self.times_visited) and self.times_visited[self.pos] == 0:
+            command, value = self.instructions[self.pos]
+            if command == "nop":
+                self._nop(value)
+            elif command == "jmp":
+                self._jmp(value)
+            elif command == "acc":
+                self._acc(value)
+            else:
+                raise ValueError
 
 
-def iter_preamble(int_list, preamble_size):
-    for j in range(len(int_list) - (preamble_size+1)):
-        yield int_list[j:(j+preamble_size)], int_list[j+preamble_size]
+# Part 1
+aa = HGC(instruction_list)
+aa.run()
+print(f"Accumulator Value: {aa.accumulator}")
 
-
-test_list = [35,20,15,25,47,40,62,55,65,95,102,117,150,182,127,219,299,277,309,576]
-
-for lst, tar in iter_preamble(data, 25):
-    print(f"{lst} -> {tar}")
-    if not is_sum_of(lst, tar):
-        print(f"-- {tar} is bad")
-        break
 
 # Part 2
-invalid_num = 25918798
-
-s = 0
-cumsum_data = []
-for a, b in enumerate(data):
-    s += b
-    cumsum_data += [(a, s)]
-
-for a, b in itertools.combinations(cumsum_data, 2):
-    if b[1] - a[1] == invalid_num:
-        print(f"{a} - {b}")
+# There are only ~70 nop commands.  Just test them all
+for pos, e in filter(lambda x: x[1][0] == 'nop', enumerate(instruction_list)):
+    print(f"========== {pos} ==========")
+    copy_list = instruction_list.copy()
+    copy_list[pos] = ('jmp', e[1])
+    aa = HGC(copy_list)
+    aa.run()
+    print(f"-- visited {sum(aa.times_visited)} : {aa.accumulator} : {aa.pos}")
+    print()
+    if aa.pos >= 611:
         break
 
-# (407, 44556268) - (424, 70475066)
-minval = min(data[407:425])
-maxval = max(data[407:425])
-print(f"Weakness number: {minval + maxval}")
+# There are only ~70 jmp commands.  Just test them all
+for pos, e in filter(lambda x: x[1][0] == 'jmp', enumerate(instruction_list)):
+    print(f"========== {pos} ==========")
+    copy_list = instruction_list.copy()
+    copy_list[pos] = ('nop', e[1])
+    aa = HGC(copy_list)
+    aa.run()
+    print(f"-- visited {sum(aa.times_visited)} : {aa.accumulator} : {aa.pos}")
+    print()
+    if aa.pos >= 611:
+        break
+
+print(f"Accumulator value: {aa.accumulator}")
